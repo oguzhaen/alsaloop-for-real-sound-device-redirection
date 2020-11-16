@@ -1,107 +1,132 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 3.8)
 
-OPTION(COMPILE_TESTS "Compile the tests" OFF)
+#Test için gerekli adımlar
 
-IF(COMPILE_TESTS)
+option(COMPILE_TESTS "Compile the tests" OFF)
 
-    SET(PROJECT_NAME AlsaloopForRealDeviceRedirection)
+if(COMPILE_TESTS)
 
-    CMAKE_MINIMUM_REQUIRED(VERSION 3.8)
-    CMAKE_POLICY(SET CMP0015 NEW)
+    enable_language(C)
+    enable_language(CXX)
 
-    # CppUTest versiyon kontrolü
+    set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-    IF(DEFINED ENV{CPPUTEST_HOME})
+    # (1) Look for installed version of CppUTest
+    if(DEFINED ENV{CPPUTEST_HOME})
+        message(STATUS "Using CppUTest home: $ENV{CPPUTEST_HOME}")
+        set(CPPUTEST_INCLUDE_DIRS $ENV{CPPUTEST_HOME}/include)
+        set(CPPUTEST_LIBRARIES $ENV{CPPUTEST_HOME}/lib)
+        set(CPPUTEST_LDFLAGS CppUTest CppUTestExt)
+    else()
+        find_package(PkgConfig REQUIRED)
+        pkg_search_module(CPPUTEST REQUIRED cpputest>=3.8)
+        message(STATUS "Found CppUTest version ${CPPUTEST_VERSION}")
+    endif()
 
-        MESSAGE(STATUS "CppUTest Home: $ENV{CPPUTEST_HOME}")
-        SET(CPPUTEST_INCLUDE_DIRS $ENV{CPPUTEST_HOME}/include)
-        SET(CPPUTEST_LIBRARIES $ENV{CPPUTEST_HOME}/lib)
-        SET(CPPUTEST_LDFLAGS CppUTest CppUTestExt)
-        
-    ELSE()
+    # NOT: "__node doesnt name a type" adında bir hataya sebep olduğu için kapatıldı.
+    add_definitions(-DCPPUTEST_USE_MEM_LEAK_DETECTION=0)
+    add_definitions("-std=c++11")
 
-        FIND_PACKAGE(PkgConfig REQUIRED)
-        PKG_SEARCH_MODULE(CPPUTEST REQUIRED cpputest>=3.8)
-        MESSAGE(STATUS "CppUTest Version: ${CPPUTEST_VERSION}")
+    # Coverage bilgisi elde etmek için CXX flagları
+    # 
+    set(CMAKE_CXX_FLAGS "-g -O0 -Wall -fprofile-arcs -ftest-coverage")
+    set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE ON)
+    set(OBJECT_OUTPUT_DIR ${CMAKE_BINARY_DIR}/test/CMakeFiles/alsalooptobetested.dir/__/src)
 
-    ENDIF()
+    # (1) set sources to be tested
+    set(TARGET_LIBTOBETESTED alsalooptobetested)
+    set(libtobetested_sources 
+        ../src/loop_dev.cpp)
 
-    ADD_DEFINITIONS(-DCPPUTEST_USE_MEM_LEAK_DETECTION=0)
-    ADD_DEFINITIONS("-std=c++11")
+    add_library(${TARGET_LIBTOBETESTED} ${libtobetested_sources})
 
-    SET(CMAKE_CXX_FLAGS "-g -O0 -Wall -fprofile-arcs -ftest-coverage")
-    SET(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE ON)
-
-    # Test gereksinimleri
-
-    # pkg_check_modules(
-        
-    #     ${PROJECT_NAME}_TESTS_DEPENDS 
-    # )
-
-    # Proje kaynak dosyaları
-
-    SET(PROJECT_SOURCES 
-
-        ../src/loop_dev.cpp
-    )
-
-    # Proje include dizinleri
-
-    SET(PROJECT_INCLUDE_DIRS
-    
-        ../include 
-    )
-
-    # Test kaynak dosyaları
-
-    SET(TEST_SOURCES
-
-        # Main
+    # (2) Our unit tests sources
+    set(TEST_APP_NAME ${TARGET_LIBTOBETESTED}_tests)
+    set(TEST_SOURCES
         main.cpp
-
-        # Tests
-        test_loop_dev.cpp
-
-        # Mocks
         mocks/mock_alsaloop.cpp
+        test_loop_dev.cpp
     )
 
-    # Test include dizinleri
+    # (3) Take care of include directories
+    include_directories(${CPPUTEST_INCLUDE_DIRS} ../include 
+                                                ${alsalooptobetested_depends_INCLUDE_DIRS})
 
-    SET(TEST_INCLUDE_DIRS
+    link_directories(${CPPUTEST_LIBRARIES})
+    link_libraries(${TARGET_LIBTOBETESTED})
 
-        ${CPPUTEST_INCLUDE_DIRS}   
+    # (4) Build the unit tests objects and link then with the app library
+    add_executable(${TEST_APP_NAME} ${TEST_SOURCES})
+
+    target_compile_options(${TEST_APP_NAME} PUBLIC ${alsalooptobetested_depends_CFLAGS})
+    target_link_libraries(${TEST_APP_NAME} ${link_libraries} 
+                                            ${CPPUTEST_LDFLAGS} 
+                                            ${alsalooptobetested_depends_LIBRARIES}
+                                            )
+
+    # (5) Run the test once the build is done
+    add_custom_command(TARGET ${TEST_APP_NAME} COMMAND ./${TEST_APP_NAME} POST_BUILD)
+
+    ############################################################################
+    ################################### LCOV ###################################
+    ############################################################################
+
+    add_custom_target(lcov
+
+    COMMAND mkdir -p coverage
+
+    COMMAND mkdir -p coverage/html
+
+    COMMAND ${CMAKE_MAKE_PROGRAM}
+
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 
-    # Proje servis kütüphanesi. 
-    # Test executable'ına link edilecek.
+    add_custom_command(TARGET lcov
 
-    ADD_LIBRARY(${PROJECT_NAME} ${PROJECT_SOURCES})
+    COMMAND echo "################# LCOV #################"
 
-    # Include dizinleri
+    COMMAND lcov -c -d ${COVERAGE_DATA_DIR} -o ${CMAKE_BINARY_DIR}/coverage.info
 
-    INCLUDE_DIRECTORIES(${PROJECT_INCLUDE_DIRS} ${TEST_INCLUDE_DIRS})
+    COMMAND lcov --remove ${CMAKE_BINARY_DIR}/coverage.info '**/include/**' -o ${CMAKE_BINARY_DIR}/coverage_filtered.info
 
-    # Test executable
+    COMMAND genhtml -o ${CMAKE_BINARY_DIR}/coverage/html ${CMAKE_BINARY_DIR}/coverage_filtered.info
 
-    ADD_EXECUTABLE(${PROJECT_NAME}_TESTS ${TEST_SOURCES})
+    COMMAND echo "-- Coverage report has been output to ${CMAKE_BINARY_DIR}/coverage/html"
 
-    TARGET_LINK_LIBRARIES(
-        
-        ${PROJECT_NAME}_TESTS
-
-        # Proje
-        ${PROJECT_NAME}
-
-        # CPPUTEST
-        ${CPPUTEST_LDFLAGS} 
-
-        # Test gereksinimleri
-        ${${PROJECT_NAME}_TESTS_DEPENDS_LIBRARIES}
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 
-    # Derleme bitince testleri çalıştır
+    add_dependencies(lcov ${TARGET_LIBTOBETESTED})
 
-    ADD_CUSTOM_COMMAND(TARGET ${PROJECT_NAME}_TESTS COMMAND ./${PROJECT_NAME}_TESTS POST_BUILD)
+    ############################################################################
+    ################################### GCOV ###################################
+    ############################################################################
 
+    add_custom_target(gcov
+
+    COMMAND mkdir -p coverage
+
+    COMMAND ${CMAKE_MAKE_PROGRAM}
+
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+
+    add_custom_command(TARGET gcov
+
+        COMMAND echo "################# GCOV #################"
+
+        COMMAND gcov -b ${libtobetested_sources} -o ${OBJECT_OUTPUT_DIR} | grep -A 5 ".cpp$" > CoverageSummary.tmp
+
+        COMMAND cat CoverageSummary.tmp
+
+        COMMAND echo "-- Coverage files have been output to ${CMAKE_BINARY_DIR}/coverage"
+
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/coverage
+    )
+
+    add_dependencies(gcov ${TARGET_LIBTOBETESTED})
+
+else()
+    message(STATUS "Cross compile environment set")
 endif()

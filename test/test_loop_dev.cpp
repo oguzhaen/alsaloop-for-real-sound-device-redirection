@@ -9,11 +9,12 @@
  * 
  */
 
-#include <loop_dev.h>
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
-// #include "CppUTest/MemoryLeakDetectorNewMacros.h"
-// #include "CppUTest/MemoryLeakDetectorMallocMacros.h"
+#include "CppUTest/MemoryLeakDetectorNewMacros.h"
+#include "CppUTest/MemoryLeakDetectorMallocMacros.h"
+
+#include "loop_dev.h"
 
 #include <exception>
 #include <stdlib.h>
@@ -25,6 +26,7 @@ TEST_GROUP(loopDevTest){
 
     void setup()
     {
+        mock().enable();
     }
 
     void teardown()
@@ -75,7 +77,6 @@ TEST(loopDevTest, ConnectAndDisconnectDevice)
     mock().expectOneCall("snd_output_stdio_attach").andReturnValue(0);
     mock().expectOneCall("initConnection").andReturnValue(true);
     mock().expectOneCall("sortThreads");
-    mock().expectNCalls(5, "signal");
     mock().expectOneCall("runThreads");
 
     mock().expectOneCall("setQuit");
@@ -124,7 +125,6 @@ TEST(loopDevTest, TryConnectToAlreadyConnectedRealDev)
     mock().expectOneCall("snd_output_stdio_attach").andReturnValue(0);
     mock().expectOneCall("initConnection").andReturnValue(true);
     mock().expectOneCall("sortThreads");
-    mock().expectNCalls(5, "signal");
     mock().expectOneCall("runThreads");
 
     mock().expectOneCall("setQuit");
@@ -159,7 +159,6 @@ TEST(loopDevTest, TryConnectingAnotherRealDevFromTheSameLoopDev)
     mock().expectOneCall("snd_output_stdio_attach").andReturnValue(0);
     mock().expectOneCall("initConnection").andReturnValue(true);
     mock().expectOneCall("sortThreads");
-    mock().expectNCalls(5, "signal");
     mock().expectOneCall("runThreads");
 
     mock().expectOneCall("setQuit");
@@ -185,7 +184,6 @@ TEST(loopDevTest, GetDevNames)
     mock().expectOneCall("snd_output_stdio_attach").andReturnValue(0);
     mock().expectOneCall("initConnection").andReturnValue(true);
     mock().expectOneCall("sortThreads");
-    mock().expectNCalls(5, "signal");
     mock().expectOneCall("runThreads");
 
     mock().expectOneCall("setQuit");

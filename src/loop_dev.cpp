@@ -139,12 +139,6 @@ int LoopDev::connect(const std::string &realDev)
 
 	alsaLoop->sortThreads(output);
 
-	// alsaLoop->signal(SIGINT, signalHandler);
-	// alsaLoop->signal(SIGTERM, signalHandler);
-	// alsaLoop->signal(SIGABRT, signalHandler);
-	// alsaLoop->signal(SIGUSR1, signalHandlerState);
-	// alsaLoop->signal(SIGUSR2, signalHandlerIgnore);
-
 	alsaLoop->runThreads();
 	
 	realDevs.push_back(realDev);

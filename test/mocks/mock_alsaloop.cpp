@@ -15,7 +15,17 @@
 #include <alsa/asoundlib.h>
 #include <signal.h>
 
-void signalHandler(int sig)
+AlsaLoop::AlsaLoop()
+{
+
+}
+
+AlsaLoop::~AlsaLoop()
+{
+    
+}
+
+void AlsaLoop::signalHandler(int sig)
 {
     mock().actualCall("signalHandler");
 }
@@ -27,39 +37,39 @@ void signalHandlerIgnore(int sig)
 {
     mock().actualCall("signalHandlerIgnore");
 }
-void sendToAll(int sig)
+void AlsaLoop::sendToAll(int sig)
 {
     mock().actualCall("sendToAll").withIntParameter("sig", sig);
 }
-int sortThreads(snd_output_t * output)
+int AlsaLoop::sortThreads(snd_output_t * output)
 {
     return mock().actualCall("sortThreads").returnIntValueOrDefault(1);
 }
-void threadJob(struct loopbackThread *thread)                                 
+void AlsaLoop::threadJob(struct loopbackThread *thread)                                 
 {
     mock().actualCall("threadJob");
 }
-bool initConnection(char * realDev, char * loopDev, snd_output_t *output)
+bool AlsaLoop::initConnection(char * realDev, char * loopDev, snd_output_t *output)
 {
     return mock().actualCall("initConnection").returnBoolValueOrDefault(true);
 }
-void setQuit()
+void AlsaLoop::setQuit()
 {
     mock().actualCall("setQuit");
 }
-void clearQuit()
+void AlsaLoop::clearQuit()
 {
     mock().actualCall("clearQuit");
 }
-void freeThreads()
+void AlsaLoop::freeThreads()
 {
     mock().actualCall("freeThreads");
 }
-void joinFromThreads()
+void AlsaLoop::joinFromThreads()
 {
     mock().actualCall("joinFromThreads");
 }
-void runThreads()
+void AlsaLoop::runThreads()
 {
     mock().actualCall("runThreads");
 }
